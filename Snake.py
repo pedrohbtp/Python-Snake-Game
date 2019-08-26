@@ -12,11 +12,10 @@ class Snake:
         # Important varibles
         self.snakePos = [100, 50]
         self.snakeBody = [[100,50], [90,50], [80,50]]
-        self.foodPos = [random.randrange(1,width)*self.thickness, random.randrange(1,height)*self.thickness]
-        self.foodSpawn = True
+        self.foodSpawn = False
+        self.spawn_food()
 
         self.direction = 'RIGHT'
-        self.changeto = self.direction
 
         # Colors
         self.red = pygame.Color(255, 0, 0) # gameover
@@ -56,9 +55,9 @@ class Snake:
             'snake_body': self.snakeBody,
             'is_game_over': self.game_over,
             'border_distances': {
-                'right':0,
+                'right':abs((self.width-1)*self.thickness - self.snakePos[1]),
                 'left':self.snakePos[1],
-                'up':0,
+                'up':abs((self.height-1)*self.thickness - self.snakePos[0]),
                 'down':self.snakePos[0]
             }
         }
@@ -89,35 +88,34 @@ class Snake:
     def get_pressed_key(self):
         ''' Gets the key that was pressed by the user
         '''
+        change_to = self.direction
         for event in self.pygame.event.get():
             if event.type == self.pygame.QUIT:
                 self.game_over = True
             elif event.type == self.pygame.KEYDOWN:
                 if event.key == self.pygame.K_RIGHT or event.key == ord('d'):
-                    self.changeto = 'RIGHT' 
+                    change_to = 'RIGHT' 
                 if event.key == self.pygame.K_LEFT or event.key == ord('a'):
-                    self.changeto = 'LEFT' 
+                    change_to = 'LEFT' 
                 if event.key == self.pygame.K_UP or event.key == ord('w'):
-                    self.changeto = 'UP' 
+                    change_to = 'UP' 
                 if event.key == self.pygame.K_DOWN or event.key == ord('s'):
-                    self.changeto = 'DOWN' 
+                    change_to = 'DOWN' 
                 if event.key == self.pygame.K_ESCAPE:
                     self.pygame.event.post(self.pygame.event.Event(self.pygame.QUIT))
-                    
-    def set_changed_to(action):
-        self.changeto = action
+        return change_to
     
-    def move_snake(self):
+    def move_snake(self, change_to):
         ''' Move the snake
         '''
         # validation of self.direction
-        if self.changeto == 'RIGHT' and not self.direction == 'LEFT':
+        if change_to == 'RIGHT' and not self.direction == 'LEFT':
             self.direction = 'RIGHT'
-        if self.changeto == 'LEFT' and not self.direction == 'RIGHT':
+        if change_to == 'LEFT' and not self.direction == 'RIGHT':
             self.direction = 'LEFT'
-        if self.changeto == 'UP' and not self.direction == 'DOWN':
+        if change_to == 'UP' and not self.direction == 'DOWN':
             self.direction = 'UP'
-        if self.changeto == 'DOWN' and not self.direction == 'UP':
+        if change_to == 'DOWN' and not self.direction == 'UP':
             self.direction = 'DOWN'
 
         # Update snake position [x,y]
@@ -141,7 +139,7 @@ class Snake:
     def spawn_food(self):
         #Food Spawn
         if self.foodSpawn == False:
-            self.foodPos = [random.randrange(1,self.width)*self.thickness,random.randrange(1, self.height)*self.thickness] 
+            self.foodPos = [random.randrange(1,self.height-1)*self.thickness,random.randrange(1, self.width-1)*self.thickness] 
         self.foodSpawn = True
 
     def check_game_over(self):
@@ -170,8 +168,8 @@ class Snake:
     def play_game(self):
         self.init_interface()
         while self.game_over == False:
-            self.get_pressed_key()
-            self.move_snake()
+            direction = self.get_pressed_key()
+            self.move_snake(direction)
             self.spawn_food()
             self.render()
             self.check_game_over()
