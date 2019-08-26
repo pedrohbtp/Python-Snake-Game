@@ -46,7 +46,7 @@ class Snake:
             'snake_body': self.snakeBody            
         }
     
-    def check_and_render_game_over(self):
+    def render_game_over(self):
         if self.game_over:
             myFont = self.pygame.font.SysFont('monaco', 72)
             GOsurf = myFont.render('Game over!', True, self.red)
@@ -57,7 +57,7 @@ class Snake:
             self.pygame.display.flip()
             time.sleep(4)
             self.pygame.quit() #pygame exit
-            sys.exit() #console exit
+#             sys.exit() #console exit
     
     def render_score(self,choice=1):
         sFont = self.pygame.font.SysFont('monaco', 24)
@@ -74,8 +74,7 @@ class Snake:
         '''
         for event in self.pygame.event.get():
             if event.type == self.pygame.QUIT:
-                self.pygame.quit()
-                sys.exit()
+                self.game_over = True
             elif event.type == self.pygame.KEYDOWN:
                 if event.key == self.pygame.K_RIGHT or event.key == ord('d'):
                     self.changeto = 'RIGHT' 
@@ -147,19 +146,16 @@ class Snake:
             self.pygame.draw.rect(self.playSurface, self.green, self.pygame.Rect(pos[0],pos[1],10,10))
 
         self.pygame.draw.rect(self.playSurface, self.brown, self.pygame.Rect(self.foodPos[0], self.foodPos[1],10,10))
+        self.render_score()
+        self.pygame.display.flip()
+        self.fpsController.tick(24)
     
     def play_game(self):
         self.init_interface()
-        while True:
+        while self.game_over == False:
             self.get_pressed_key()
             self.move_snake()
             self.spawn_food()
             self.render()
             self.check_game_over()
-            self.check_and_render_game_over()
-            
-            self.render_score()
-            
-            self.pygame.display.flip()
-
-            self.fpsController.tick(24)
+        self.render_game_over()
