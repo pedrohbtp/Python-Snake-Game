@@ -39,26 +39,29 @@ class Snake:
         self.playSurface = self.pygame.display.set_mode((self.height*self.thickness, self.width*self.thickness))
         self.pygame.display.set_caption('Snake game!')
     
+    def close_render(self):
+        self.pygame.quit()
+    
     def get_states(self):
         ''' Gets the relevant states of the game used in the AI
         '''
         return { 
             'score': self.score,
             'snake_pos': {
-                'x': self.snakePos[1],
-                'y': self.snakePos[0]
+                'y': self.snakePos[1],
+                'x': self.snakePos[0]
             },
             'food_pos': {
-                'x': self.foodPos[1],
-                'y': self.foodPos[0]
+                'y': self.foodPos[1],
+                'x': self.foodPos[0]
             },
             'snake_body': self.snakeBody,
             'is_game_over': self.game_over,
             'border_distances': {
-                'right':abs((self.width-1)*self.thickness - self.snakePos[1]),
-                'left':self.snakePos[1],
-                'up':abs((self.height-1)*self.thickness - self.snakePos[0]),
-                'down':self.snakePos[0]
+                'right':abs((self.width-1)*self.thickness - self.snakePos[0]),
+                'left':self.snakePos[0],
+                'up':abs((self.height-1)*self.thickness - self.snakePos[1]),
+                'down':self.snakePos[1]
             }
         }
     
@@ -72,8 +75,7 @@ class Snake:
             self.render_score(0)
             self.pygame.display.flip()
             time.sleep(4)
-            self.pygame.quit() #pygame exit
-#             sys.exit() #console exit
+            self.close_render()
     
     def render_score(self,choice=1):
         sFont = self.pygame.font.SysFont('monaco', 24)
@@ -108,6 +110,7 @@ class Snake:
     def move_snake(self, change_to):
         ''' Move the snake
         '''
+        self.spawn_food()
         # validation of self.direction
         if change_to == 'RIGHT' and not self.direction == 'LEFT':
             self.direction = 'RIGHT'
@@ -135,6 +138,7 @@ class Snake:
             self.foodSpawn = False
         else:
             self.snakeBody.pop()
+        self.check_game_over()
 
     def spawn_food(self):
         #Food Spawn
@@ -163,14 +167,12 @@ class Snake:
         self.pygame.draw.rect(self.playSurface, self.brown, self.pygame.Rect(self.foodPos[0], self.foodPos[1],self.thickness,self.thickness))
         self.render_score()
         self.pygame.display.flip()
-        self.fpsController.tick(24)
+        self.fpsController.tick(20)
     
     def play_game(self):
         self.init_interface()
         while self.game_over == False:
             direction = self.get_pressed_key()
             self.move_snake(direction)
-            self.spawn_food()
             self.render()
-            self.check_game_over()
         self.render_game_over()
