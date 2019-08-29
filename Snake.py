@@ -1,21 +1,27 @@
 import pygame, sys, random, time
+import gym
+from gym import spaces
+import numpy as np
 
-class Snake:
-    def __init__(self, width=50, height=50, thickness=10):
+class Snake(gym.Env):
+    """Custom Environment that follows gym interface"""
+    metadata = {'render.modes': ['human']}
+
+    def __init__(self, width=50, thickness=10):
+        super(Snake, self).__init__()
+        # make it square for the sake of defining the state space
+        self.height=width
         self.possible_actions = ['RIGHT', 'LEFT', 'UP', 'DOWN']
-        self.game_over = False
+        # Define action and observation spaces following openai standard
+        self.action_space = spaces.Discrete(len(self.possible_actions))
+        self.observation_space = spaces.Box(-1, width+1, (8,1), dtype=np.float32)
+        # Define other internal variables
         self.width = width
-        self.height = height
         self.thickness = thickness
         # whether it should render anything
         self.display=display
         # Important varibles
-        self.snakePos = [100, 50]
-        self.snakeBody = [[100,50], [90,50], [80,50]]
-        self.foodSpawn = False
-        self.spawn_food()
-
-        self.direction = 'RIGHT'
+        self.reset()
 
         # Colors
         self.red = pygame.Color(255, 0, 0) # gameover
@@ -23,8 +29,6 @@ class Snake:
         self.black = pygame.Color(0, 0, 0) #score
         self.white = pygame.Color(255, 255, 255) #background
         self.brown = pygame.Color(165, 42, 42) #food
-
-        self.score = 0
             
     def init_interface(self):
         self.pygame = pygame
@@ -45,26 +49,38 @@ class Snake:
     def get_states(self):
         ''' Gets the relevant states of the game used in the AI
         '''
-        return { 
-            'score': self.score,
-            'snake_pos': {
-                'y': self.snakePos[1],
-                'x': self.snakePos[0]
-            },
-            'food_pos': {
-                'y': self.foodPos[1],
-                'x': self.foodPos[0]
-            },
-            'snake_body': self.snakeBody,
-            'is_game_over': self.game_over,
-            'border_distances': {
-                'right':abs((self.width-1)*self.thickness - self.snakePos[0]),
-                'left':self.snakePos[0],
-                'up':abs((self.height-1)*self.thickness - self.snakePos[1]),
-                'down':self.snakePos[1]
-            }
+        state_dict = {  
+            'snake_pos_x':self.snakePos[1],
+            'snake_pos_y':self.snakePos[0],
+            'food_pos_x':self.foodPos[1],
+            'food_pos_y':self.foodPos[0],
+#             'snake_body': self.snakeBody,
+            # 'is_game_over': 1 if self.game_over else 0]],
+            'border_distances_right':abs((self.width-1) - self.snakePos[0]),
+            'border_distances_left':self.snakePos[0],
+            'border_distances_up':abs((self.height-1) - self.snakePos[1]),
+            'border_distances_down':self.snakePos[1]
         }
+        return state_dict
     
+    def get_gym_state_representation(self):
+        ret_list = []
+        dict_states = self.get_states()
+        for i in dict_states:
+            ret_list.append([dict_states[i]])
+        return np.array(ret_list)
+
+    def calculate_immediate_reward(self):
+        reward = 0
+        if self.is_in_food_position():
+            reward = 10
+        elif self.game_over:
+            reward = -10
+        # else:
+        #     # reward for the distance to the food
+        #     reward = 1/(abs(self.snakePos[0] - self.foodPos[0]) + abs(self.snakePos[1] - self.foodPos[1]))
+        return reward
+        
     def render_game_over(self):
         if self.game_over:
             myFont = self.pygame.font.SysFont('monaco', self.height)
@@ -123,51 +139,46 @@ class Snake:
 
         # Update snake position [x,y]
         if self.direction == 'RIGHT':
-            self.snakePos[0] += self.thickness
+            self.snakePos[0] += 1 #self.thickness
         if self.direction == 'LEFT':
-            self.snakePos[0] -= self.thickness
+            self.snakePos[0] -= 1 #self.thickness
         if self.direction == 'UP':
-            self.snakePos[1] -= self.thickness
+            self.snakePos[1] -= 1 #self.thickness
         if self.direction == 'DOWN':
-            self.snakePos[1] += self.thickness
+            self.snakePos[1] += 1 #self.thickness
             
         # Snake body mechanism
         self.snakeBody.insert(0, list(self.snakePos))
-        if self.snakePos[0] == self.foodPos[0] and self.snakePos[1] == self.foodPos[1]:
+        if self.is_in_food_position():
             self.score += 1
             self.foodSpawn = False
+            # test not growing snake
+#             self.snakeBody.pop()
         else:
             self.snakeBody.pop()
         self.check_game_over()
+    
+    def is_in_food_position(self):
+        return self.snakePos[0] == self.foodPos[0] and self.snakePos[1] == self.foodPos[1]
 
     def spawn_food(self):
         #Food Spawn
         if self.foodSpawn == False:
-            self.foodPos = [random.randrange(1,self.height-1)*self.thickness,random.randrange(1, self.width-1)*self.thickness] 
+            self.foodPos = [random.randrange(1,self.height-1),#*self.thickness,
+                            random.randrange(1, self.width-1)#*self.thickness
+                           ] 
         self.foodSpawn = True
 
     def check_game_over(self):
         # Bound
-        if self.snakePos[0] > (self.height-1)*self.thickness or self.snakePos[0] < 0:
+        if self.snakePos[0] > (self.height-1) or self.snakePos[0] < 0:
             self.game_over = True
-        if self.snakePos[1] > (self.width-1)*self.thickness or self.snakePos[1] < 0:
+        if self.snakePos[1] > (self.width-1) or self.snakePos[1] < 0:
             self.game_over = True
         # Self hit
         for block in self.snakeBody[1:]:
             if self.snakePos[0] == block[0] and self.snakePos[1] == block[1]:
                 self.game_over = True
-    
-    def render(self):
-        #Background
-        self.playSurface.fill(self.white)
-        #Draw Snake 
-        for pos in self.snakeBody:
-            self.pygame.draw.rect(self.playSurface, self.green, self.pygame.Rect(pos[0],pos[1],self.thickness,self.thickness))
-
-        self.pygame.draw.rect(self.playSurface, self.brown, self.pygame.Rect(self.foodPos[0], self.foodPos[1],self.thickness,self.thickness))
-        self.render_score()
-        self.pygame.display.flip()
-        self.fpsController.tick(20)
     
     def play_game(self):
         self.init_interface()
@@ -176,3 +187,49 @@ class Snake:
             self.move_snake(direction)
             self.render()
         self.render_game_over()
+    
+    def step(self, action):
+        ''' step method for openai
+        returns: observation, reward, done, info 
+        '''
+        # moves the snake
+        self.move_snake(self.possible_actions[action])
+        # make the observation
+        obs = self.get_gym_state_representation()
+        # get the reward 
+        rwd = self.calculate_immediate_reward()
+        # check if it is done
+        done = self.game_over
+        # more info
+        info = {}
+        return obs, rwd, done, info
+    
+    def reset(self):
+        ''' reset method for openai
+        '''
+        self.snakePos = [10, 5]
+        self.snakeBody = [[10,5], [9,5], [8,5]]
+        self.foodSpawn = False
+        self.spawn_food()
+        self.game_over = False
+        self.direction = 'RIGHT'
+        self.score=0
+        return self.get_gym_state_representation()
+    
+    def render(self, mode='human', close=False):
+        ''' Render method for openai
+        '''
+        self.init_interface()
+        #Background
+        self.playSurface.fill(self.white)
+        #Draw Snake 
+        for pos in self.snakeBody:
+            self.pygame.draw.rect(self.playSurface, self.green, self.pygame.Rect(self.thickness*pos[0],self.thickness*pos[1],self.thickness,self.thickness))
+
+        self.pygame.draw.rect(self.playSurface, self.brown, self.pygame.Rect(self.thickness*self.foodPos[0], self.thickness*self.foodPos[1],self.thickness,self.thickness))
+        self.render_score()
+        self.pygame.display.flip()
+        self.fpsController.tick(20)
+            
+
+        
